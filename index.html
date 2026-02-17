@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="予定の終了時刻を自動計算するスマホ向け時間計算アプリ">
+    <title>Time Calc - 時間計算アプリ</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #000000;
+            --bg-card: #1a1a1a;
+            --bg-input: #111111;
+            --border-color: #2a2a2a;
+            --border-light: #333333;
+            --text-primary: #e8e8e8;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --accent-1: #4a9eff;
+            --accent-2: #60b0ff;
+            --accent-3: #3d8be8;
+            --accent-light: rgba(74, 158, 255, 0.15);
+            --accent-border: rgba(74, 158, 255, 0.3);
+            --danger: #ff5555;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            position: relative;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 12px 16px;
+            padding-bottom: 40px;
+        }
+
+        /* Header */
+        .app-header {
+            text-align: center;
+            padding: 20px 0 16px;
+        }
+
+        .app-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-1);
+            letter-spacing: -0.3px;
+        }
+
+        .app-header p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 400;
+        }
+
+        /* Card */
+        .glass-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 18px;
+            margin-bottom: 12px;
+        }
+
+        .section-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+        }
+
+        .section-label .icon {
+            font-size: 14px;
+        }
+
+        /* Current Time Section */
+        .current-time-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .time-input-wrapper {
+            position: relative;
+            flex: 1;
+        }
+
+        .time-input {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 30px;
+            font-weight: 700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            text-align: center;
+            background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            color: var(--accent-1);
+            outline: none;
+            transition: border-color 0.2s ease;
+            -webkit-appearance: none;
+        }
+
+        .time-input:focus {
+            border-color: var(--accent-1);
+        }
+
+        .btn-now {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--accent-1);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: #ffffff;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .btn-now:active {
+            transform: scale(0.95);
+            opacity: 0.85;
+        }
+
+        .current-time-hint {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Add Schedule Section */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 11px 14px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent-1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Duration Input */
+        .duration-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .duration-item {
+            flex: 1;
+            position: relative;
+        }
+
+        .duration-item input {
+            width: 100%;
+            padding: 11px 40px 11px 16px;
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            text-align: center;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.2s ease;
+            -moz-appearance: textfield;
+        }
+
+        .duration-item input::-webkit-inner-spin-button,
+        .duration-item input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+        }
+
+        .duration-item input:focus {
+            border-color: var(--accent-1);
+        }
+
+        .duration-unit {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        /* Quick Duration Buttons */
+        .quick-durations {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .quick-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-btn:active {
+            transform: scale(0.93);
+        }
+
+        .quick-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent-border);
+            color: var(--accent-1);
+        }
+
+        /* End Time Preview */
+        .end-time-preview {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 10px;
+            background: var(--accent-light);
+            border: 1px solid var(--accent-border);
+            border-radius: var(--radius-sm);
+        }
+
+        .end-time-preview.visible {
+            display: flex;
+        }
+
+        .end-time-preview .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .end-time-preview .time {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-1);
+        }
+
+        .end-time-preview .next-day {
+            font-size: 11px;
+            color: var(--accent-2);
+            opacity: 0.8;
+        }
+
+        /* Add Button */
+        .btn-add {
+            width: 100%;
+            padding: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            background: var(--accent-1);
+            border: none;
+            border-radius: 24px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 16px;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-add:active {
+            transform: scale(0.97);
+            opacity: 0.85;
+        }
+
+        .btn-add:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Schedule List */
+        .schedule-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .total-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .total-time span {
+            color: var(--accent-1);
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px 16px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Schedule Item */
+        .schedule-item {
+            display: flex;
+            align-items: stretch;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            animation: slideIn 0.35s ease-out;
+            position: relative;
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .schedule-timeline {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 56px;
+        }
+
+        .schedule-start-time {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-2);
+        }
+
+        .schedule-connector {
+            flex: 1;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--accent-2), var(--accent-3));
+            margin: 4px 0;
+            border-radius: 1px;
+            min-height: 16px;
+        }
+
+        .schedule-end-time {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-1);
+        }
+
+        .schedule-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .schedule-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 3px;
+        }
+
+        .schedule-duration {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .schedule-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .btn-delete {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid rgba(255, 85, 85, 0.2);
+            border-radius: 6px;
+            color: var(--danger);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.4;
+        }
+
+        .btn-delete:hover,
+        .btn-delete:active {
+            opacity: 1;
+            background: rgba(255, 85, 85, 0.1);
+        }
+
+        /* Summary Card */
+        .summary-card {
+            background: #111111;
+            border: 1px solid var(--accent-border);
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+
+        .summary-row:not(:last-child) {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .summary-row .label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .summary-row .value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .summary-row .value.start {
+            color: var(--accent-2);
+        }
+
+        .summary-row .value.end {
+            color: var(--accent-1);
+        }
+
+        .summary-row .value.total {
+            color: var(--accent-1);
+        }
+
+        .next-day-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            background: var(--accent-light);
+            border-radius: 4px;
+            color: var(--accent-1);
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* Clear All Button */
+        .btn-clear {
+            width: 100%;
+            padding: 11px;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            border: 1px solid rgba(255, 85, 85, 0.2);
+            border-radius: var(--radius-sm);
+            color: var(--danger);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            opacity: 0.5;
+        }
+
+        .btn-clear:active {
+            opacity: 1;
+            background: rgba(255, 85, 85, 0.1);
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Mobile touch feedback */
+        button {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Safe area for notched devices */
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .app-container {
+                padding-top: calc(12px + env(safe-area-inset-top));
+                padding-bottom: calc(40px + env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Time Calc</h1>
+            <p>予定の終了時刻を自動計算</p>
+        </header>
+
+        <!-- Current Time Setting -->
+        <section class="glass-card" id="time-section">
+            <div class="section-label">
+                <span>現在時刻</span>
+            </div>
+            <div class="current-time-display">
+                <div class="time-input-wrapper">
+                    <input type="time" id="currentTime" class="time-input" value="20:00">
+                </div>
+                <button class="btn-now" id="btnNow" onclick="setCurrentTime()">
+                    現在時刻
+                </button>
+            </div>
+            <div class="current-time-hint">タップして開始時刻を設定</div>
+        </section>
+
+        <!-- Add Schedule -->
+        <section class="glass-card" id="add-section">
+            <div class="section-label">
+                <span>予定を追加</span>
+            </div>
+
+            <div class="form-group">
+                <label for="scheduleName">予定名</label>
+                <input type="text" id="scheduleName" class="form-input" placeholder="例：ランニング" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label>所要時間</label>
+                <div class="duration-row">
+                    <div class="duration-item">
+                        <input type="number" id="durationHours" min="0" max="23" value="1" inputmode="numeric">
+                        <span class="duration-unit">時間</span>
+                    </div>
+                    <div class="duration-item">
+                        <input type="number" id="durationMinutes" min="0" max="59" value="0" inputmode="numeric">
+                        <span class="duration-unit">分</span>
+                    </div>
+                </div>
+                <div class="quick-durations">
+                    <button class="quick-btn" onclick="setQuickDuration(0, 15)">15分</button>
+                    <button class="quick-btn" onclick="setQuickDuration(0, 30)">30分</button>
+                    <button class="quick-btn" onclick="setQuickDuration(1, 0)">1時間</button>
+                    <button class="quick-btn" onclick="setQuickDuration(1, 30)">1.5時間</button>
+                    <button class="quick-btn" onclick="setQuickDuration(2, 0)">2時間</button>
+                    <button class="quick-btn" onclick="setQuickDuration(3, 0)">3時間</button>
+                </div>
+            </div>
+
+            <!-- End Time Preview -->
+            <div class="end-time-preview" id="endTimePreview">
+                <span class="label">終了予定 →</span>
+                <span class="time" id="previewTime">--:--</span>
+                <span class="next-day" id="previewNextDay"></span>
+            </div>
+
+            <button class="btn-add" id="btnAdd" onclick="addSchedule()">
+                ＋ 予定を追加
+            </button>
+        </section>
+
+        <!-- Schedule List -->
+        <section class="glass-card" id="list-section" style="display: none;">
+            <div class="schedule-list-header">
+                <div class="section-label" style="margin-bottom: 0;">
+                    <span>予定リスト</span>
+                </div>
+                <div class="total-time" id="totalTime"></div>
+            </div>
+            <div id="scheduleList"></div>
+        </section>
+
+        <!-- Summary -->
+        <section class="glass-card summary-card" id="summary-section" style="display: none;">
+            <div class="section-label">
+                <span>サマリー</span>
+            </div>
+            <div class="summary-row">
+                <span class="label">開始時刻</span>
+                <span class="value start" id="summaryStart">--:--</span>
+            </div>
+            <div class="summary-row">
+                <span class="label">終了時刻</span>
+                <span class="value end" id="summaryEnd">--:--</span>
+            </div>
+            <div class="summary-row">
+                <span class="label">合計時間</span>
+                <span class="value total" id="summaryTotal">--</span>
+            </div>
+            <button class="btn-clear" onclick="clearAll()">すべてクリア</button>
+        </section>
+    </div>
+
+    <script>
+        // State
+        let schedules = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setCurrentTime();
+            setupPreviewListeners();
+        });
+
+        // Set current time to now
+        function setCurrentTime() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('currentTime').value = `${h}:${m}`;
+            recalculateAll();
+            updatePreview();
+        }
+
+        // Setup preview listeners
+        function setupPreviewListeners() {
+            const inputs = ['currentTime', 'durationHours', 'durationMinutes'];
+            inputs.forEach(id => {
+                document.getElementById(id).addEventListener('input', updatePreview);
+                document.getElementById(id).addEventListener('change', updatePreview);
+            });
+        }
+
+        // Update end time preview
+        function updatePreview() {
+            const preview = document.getElementById('endTimePreview');
+            const currentTime = document.getElementById('currentTime').value;
+            const hours = parseInt(document.getElementById('durationHours').value) || 0;
+            const minutes = parseInt(document.getElementById('durationMinutes').value) || 0;
+
+            if (!currentTime || (hours === 0 && minutes === 0)) {
+                preview.classList.remove('visible');
+                return;
+            }
+
+            // Calculate start time (either current time or last schedule end time)
+            let startMinutes;
+            if (schedules.length > 0) {
+                const last = schedules[schedules.length - 1];
+                startMinutes = last.endMinutes;
+            } else {
+                const [ch, cm] = currentTime.split(':').map(Number);
+                startMinutes = ch * 60 + cm;
+            }
+
+            const endMinutes = startMinutes + hours * 60 + minutes;
+            const endTime = formatMinutes(endMinutes);
+            const isNextDay = endMinutes >= 24 * 60;
+
+            document.getElementById('previewTime').textContent = endTime;
+            document.getElementById('previewNextDay').textContent = isNextDay ? '(翌日)' : '';
+            preview.classList.add('visible');
+        }
+
+        // Set quick duration
+        function setQuickDuration(h, m) {
+            document.getElementById('durationHours').value = h;
+            document.getElementById('durationMinutes').value = m;
+            updatePreview();
+
+            // Visual feedback
+            const btns = document.querySelectorAll('.quick-btn');
+            btns.forEach(btn => btn.style.borderColor = '');
+            event.target.style.borderColor = 'rgba(74, 158, 255, 0.5)';
+        }
+
+        // Format minutes to HH:MM
+        function formatMinutes(totalMinutes) {
+            const normalized = ((totalMinutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+            const h = String(Math.floor(normalized / 60)).padStart(2, '0');
+            const m = String(normalized % 60).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+
+        // Format duration
+        function formatDuration(totalMinutes) {
+            const h = Math.floor(totalMinutes / 60);
+            const m = totalMinutes % 60;
+            if (h === 0) return `${m}分`;
+            if (m === 0) return `${h}時間`;
+            return `${h}時間${m}分`;
+        }
+
+        // Add schedule
+        function addSchedule() {
+            const name = document.getElementById('scheduleName').value.trim();
+            const hours = parseInt(document.getElementById('durationHours').value) || 0;
+            const minutes = parseInt(document.getElementById('durationMinutes').value) || 0;
+            const currentTime = document.getElementById('currentTime').value;
+
+            if (!name) {
+                shakeElement(document.getElementById('scheduleName'));
+                document.getElementById('scheduleName').focus();
+                return;
+            }
+
+            if (hours === 0 && minutes === 0) {
+                shakeElement(document.querySelector('.duration-row'));
+                return;
+            }
+
+            const durationMinutes = hours * 60 + minutes;
+
+            // Calculate start time
+            let startMinutes;
+            if (schedules.length === 0) {
+                const [ch, cm] = currentTime.split(':').map(Number);
+                startMinutes = ch * 60 + cm;
+            } else {
+                startMinutes = schedules[schedules.length - 1].endMinutes;
+            }
+
+            const endMinutes = startMinutes + durationMinutes;
+
+            schedules.push({
+                name,
+                durationMinutes,
+                startMinutes,
+                endMinutes
+            });
+
+            // Reset form
+            document.getElementById('scheduleName').value = '';
+            document.getElementById('scheduleName').focus();
+
+            renderSchedules();
+            updatePreview();
+        }
+
+        // Delete schedule
+        function deleteSchedule(index) {
+            schedules.splice(index, 1);
+            recalculateAll();
+            renderSchedules();
+            updatePreview();
+        }
+
+        // Recalculate all schedules from start
+        function recalculateAll() {
+            const currentTime = document.getElementById('currentTime').value;
+            if (!currentTime || schedules.length === 0) return;
+
+            const [ch, cm] = currentTime.split(':').map(Number);
+            let currentMinutes = ch * 60 + cm;
+
+            schedules.forEach(s => {
+                s.startMinutes = currentMinutes;
+                s.endMinutes = currentMinutes + s.durationMinutes;
+                currentMinutes = s.endMinutes;
+            });
+
+            renderSchedules();
+        }
+
+        // Render schedules
+        function renderSchedules() {
+            const listSection = document.getElementById('list-section');
+            const summarySection = document.getElementById('summary-section');
+            const listEl = document.getElementById('scheduleList');
+
+            if (schedules.length === 0) {
+                listSection.style.display = 'none';
+                summarySection.style.display = 'none';
+                return;
+            }
+
+            listSection.style.display = 'block';
+            summarySection.style.display = 'block';
+
+            // Render list items
+            listEl.innerHTML = schedules.map((s, i) => {
+                const isNextDayStart = s.startMinutes >= 24 * 60;
+                const isNextDayEnd = s.endMinutes >= 24 * 60;
+
+                return `
+                    <div class="schedule-item" style="animation-delay: ${i * 0.05}s">
+                        <div class="schedule-timeline">
+                            <span class="schedule-start-time">${formatMinutes(s.startMinutes)}</span>
+                            <div class="schedule-connector"></div>
+                            <span class="schedule-end-time">${formatMinutes(s.endMinutes)}</span>
+                        </div>
+                        <div class="schedule-content">
+                            <div class="schedule-name">${escapeHtml(s.name)}</div>
+                            <div class="schedule-duration">${formatDuration(s.durationMinutes)}${isNextDayEnd ? ' <span class="next-day-badge">翌日</span>' : ''}</div>
+                        </div>
+                        <div class="schedule-actions">
+                            <button class="btn-delete" onclick="deleteSchedule(${i})" aria-label="削除">✕</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update total time
+            const totalMinutes = schedules.reduce((sum, s) => sum + s.durationMinutes, 0);
+            document.getElementById('totalTime').innerHTML = `合計: <span>${formatDuration(totalMinutes)}</span>`;
+
+            // Update summary
+            const first = schedules[0];
+            const last = schedules[schedules.length - 1];
+
+            document.getElementById('summaryStart').textContent = formatMinutes(first.startMinutes);
+
+            const endTimeStr = formatMinutes(last.endMinutes);
+            const isEndNextDay = last.endMinutes >= 24 * 60;
+            document.getElementById('summaryEnd').innerHTML = endTimeStr + (isEndNextDay ? '<span class="next-day-badge">翌日</span>' : '');
+
+            document.getElementById('summaryTotal').textContent = formatDuration(totalMinutes);
+        }
+
+        // Clear all
+        function clearAll() {
+            if (schedules.length === 0) return;
+            schedules = [];
+            renderSchedules();
+            updatePreview();
+        }
+
+        // Shake animation for validation
+        function shakeElement(el) {
+            el.style.animation = 'none';
+            el.offsetHeight; // Force reflow
+            el.style.animation = 'shake 0.4s ease';
+            setTimeout(() => el.style.animation = '', 400);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add shake keyframes dynamically
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                20% { transform: translateX(-6px); }
+                40% { transform: translateX(6px); }
+                60% { transform: translateX(-4px); }
+                80% { transform: translateX(4px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+
+    <script>
+        // Service Worker登録
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(() => {
+                console.log('Service Worker registered');
+            }).catch((err) => {
+                console.log('Service Worker registration failed:', err);
+            });
+        }
+    </script>
+</body>
+
+</html>
